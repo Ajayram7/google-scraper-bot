@@ -32,6 +32,7 @@ params = {
 
 search = GoogleSearch(params)
 result = search.get_dict()
+print("SERPAPI RESPONSE:", result)
 
 for g in result.get("organic_results", []):
     title = g.get("title")

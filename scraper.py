@@ -1,8 +1,13 @@
-import requests
+
 from bs4 import BeautifulSoup
 import pandas as pd
 import json
 import time
+from serpapi import GoogleSearch
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Load search config
 with open('../config.json', 'r') as f:
@@ -16,24 +21,29 @@ results = []
 
 for keyword in keywords:
     query = f'"{vertical}" + "{keyword}" + {location}'
+    api_key = os.getenv("SERPAPI_API_KEY")
+
     print(f"Searching for: {query}")
+params = {
+    "engine": "google",
+    "q": query,
+    "api_key": api_key
+}
 
-    headers = {"User-Agent": "Mozilla/5.0"}
-    url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
-    response = requests.get(url, headers=headers)
+search = GoogleSearch(params)
+result = search.get_dict()
 
-    soup = BeautifulSoup(response.text, "html.parser")
-    for g in soup.select('div.tF2Cxc'):
-        title = g.select_one('h3')
-        link = g.select_one('a')
-        snippet = g.select_one('.VwiC3b')
+for g in result.get("organic_results", []):
+    title = g.get("title")
+    link = g.get("link")
+    snippet = g.get("snippet")
 
-        if title and link:
-            results.append({
-                'title': title.text,
-                'link': link['href'],
-                'snippet': snippet.text if snippet else ''
-            })
+    if title and link:
+        results.append({
+            'title': title,
+            'link': link,
+            'snippet': snippet if snippet else ''
+        })
 
     time.sleep(5)  # avoid hitting Google too quickly
 

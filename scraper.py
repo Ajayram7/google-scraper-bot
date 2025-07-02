@@ -1,4 +1,6 @@
 
+import gspread
+from google.oauth2.service_account import Credentials
 from bs4 import BeautifulSoup
 import pandas as pd
 import json
@@ -9,6 +11,17 @@ import os
 import requests
 
 load_dotenv()
+# Load Google credentials from environment variable
+creds_dict = json.loads(os.environ["GOOGLE_CREDS_JSON"])
+scopes = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive"
+]
+creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+client = gspread.authorize(creds)
+
+# Open the Google Sheet
+sheet = client.open("Google Scraper Data").sheet1
 
 # Load search config
 with open('config.json', 'r') as f:
@@ -97,11 +110,11 @@ for g in result.get("organic_results", []):
     state = next((s for s in states_to_search if s.lower() in text.lower()), '')
 
    if domain and domain not in seen_domains:
-    results.append({
-        'Website': domain,
-        'State': state,
-        'Phone Number': phone_number
-    })
+    sheet.append_row([
+        domain,
+        state,
+        phone_number
+    ])
     seen_domains.add(domain)
 
     time.sleep(3)  # Avoid rate-limiting

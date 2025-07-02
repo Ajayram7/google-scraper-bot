@@ -107,7 +107,7 @@ sheet.append_row([
     phone_number
 ])
 
-    time.sleep(3)  # Avoid rate-limiting
+time.sleep(3)  # Avoid rate-limiting
 
 # Upload results to Google Sheet
 sheet = client.open("Google Scraper Data").sheet1

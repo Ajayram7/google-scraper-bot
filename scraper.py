@@ -19,24 +19,35 @@ keywords = config['freight_keywords']
 location = config.get('location', '')
 
 results = []
+seen_domains = set()
 
-for keyword in keywords:
-    query = f'"{vertical}" + "{keyword}" + {location}'
-    api_key = os.getenv("SERPAPI_API_KEY")
+states_to_search = [
+    "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
+    "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+    "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi",
+    "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico",
+    "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
+    "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
+    "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"
+]
 
-    print(f"Searching for: {query}")
-params = {
-    "engine": "google",
-    "q": query,
-    "api_key": api_key
-}
+for state in states_to_search:
+    for keyword in keywords:
+        query = f'"{vertical}" + "{keyword}" + {state}'
+        api_key = os.getenv("SERPAPI_API_KEY")
 
-search = GoogleSearch(params)
-result = search.get_dict()
-print("SERPAPI RESPONSE:", result)
+        print(f"Searching for: {query}")
+
+        params = {
+            "engine": "google",
+            "q": query,
+            "api_key": api_key
+        }
+
+        search = GoogleSearch(params)
+        result = search.get_dict()
 
 import re
-from urllib.parse import urlparse
 from urllib.parse import urlparse
 import re
 
@@ -67,7 +78,7 @@ for g in result.get("organic_results", []):
         html = response.text
         soup = BeautifulSoup(html, "html.parser")
         text = soup.get_text(" ", strip=True)
-    except:
+    except requests.exceptions.RequestException:
         text = ""
 
     # Extract phone number from Contact page
@@ -83,13 +94,15 @@ for g in result.get("organic_results", []):
               "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
               "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"]
 
-    state = next((s for s in states if s.lower() in text.lower()), '')
+    state = next((s for s in states_to_search if s.lower() in text.lower()), '')
 
+   if domain and domain not in seen_domains:
     results.append({
         'Website': domain,
         'State': state,
         'Phone Number': phone_number
     })
+    seen_domains.add(domain)
 
     time.sleep(3)  # Avoid rate-limiting
 

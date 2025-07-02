@@ -2,4 +2,5 @@ beautifulsoup4
 requests
 pandas
 google-search-results
+python-dotenv
 # Trigger redeploy

@@ -121,5 +121,6 @@ for g in result.get("organic_results", []):
 
 # Upload results to Google Sheet
 sheet = client.open("Google Scraper Data").sheet1
+print(f"Total domains found: {len(seen_domains)}")
 
 print("Scraping complete. Results saved to output.csv")

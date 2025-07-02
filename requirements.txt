@@ -3,4 +3,6 @@ requests
 pandas
 google-search-results
 python-dotenv
+gspread
+google-auth
 # Trigger redeploy

@@ -119,4 +119,12 @@ for g in result.get("organic_results", []):
 
     time.sleep(3)  # Avoid rate-limiting
 
+# Upload results to Google Sheet
+sheet = client.open("Google Scraper Data").sheet1
+sheet.clear()  # optional: remove existing content
+
+with open('output.csv', 'r', encoding='utf-8') as f:
+    reader = csv.reader(f)
+    data = list(reader)
+    sheet.update('A1', data)
 print("Scraping complete. Results saved to output.csv")

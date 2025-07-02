@@ -121,6 +121,5 @@ for g in result.get("organic_results", []):
 
 # Upload results to Google Sheet
 sheet = client.open("Google Scraper Data").sheet1
-sheet.clear()  # optional: remove existing content
 
 print("Scraping complete. Results saved to output.csv")

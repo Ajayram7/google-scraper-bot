@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import json
 import time
-from serpapi import GoogleSearch
+from serpapi.google_search_results import GoogleSearch
 from dotenv import load_dotenv
 import os
 

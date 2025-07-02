@@ -6,6 +6,7 @@ import time
 from serpapi import GoogleSearch
 from dotenv import load_dotenv
 import os
+import requests
 
 load_dotenv()
 
@@ -36,16 +37,44 @@ print("SERPAPI RESPONSE:", result)
 
 import re
 from urllib.parse import urlparse
+from urllib.parse import urlparse
+import re
 
 for g in result.get("organic_results", []):
     link = g.get("link")
-    snippet = g.get("snippet", "")
+    if not link:
+        continue
 
-    # Extract phone number using regex
-    phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', snippet)
+    # Extract root domain from URL
+    parsed_url = urlparse(link)
+    domain = parsed_url.netloc.replace('www.', '')
+
+    # Try to find Contact page
+    contact_url = None
+    contact_paths = ["/contact", "/contact-us", "/contactus"]
+    for path in contact_paths:
+        if path in link:
+            contact_url = link
+            break
+    if not contact_url:
+        contact_url = link.rstrip("/") + "/contact"
+
+    # Fetch Contact page content
+    try:
+        response = requests.get(contact_url, timeout=5)
+        if response.status_code != 200:
+            raise Exception("Bad status")
+        html = response.text
+        soup = BeautifulSoup(html, "html.parser")
+        text = soup.get_text(" ", strip=True)
+    except:
+        text = ""
+
+    # Extract phone number from Contact page
+    phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text)
     phone_number = phone_match.group() if phone_match else ''
 
-    # Try to extract state by checking known U.S. states in snippet
+    # Try to extract state from Contact page
     states = ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
               "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
               "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi",
@@ -54,24 +83,14 @@ for g in result.get("organic_results", []):
               "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
               "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"]
 
-    state = next((s for s in states if s.lower() in snippet.lower()), '')
+    state = next((s for s in states if s.lower() in text.lower()), '')
 
-    # Extract root domain from URL
-    domain = ''
-    if link:
-        parsed_url = urlparse(link)
-        domain = parsed_url.netloc.replace('www.', '')
+    results.append({
+        'Website': domain,
+        'State': state,
+        'Phone Number': phone_number
+    })
 
-    if domain:
-        results.append({
-            'Website': domain,
-            'State': state,
-            'Phone Number': phone_number
-        })
+    time.sleep(3)  # Avoid rate-limiting
 
-time.sleep(5)  # avoid hitting Google too quickly
-
-# Save results
-df = pd.DataFrame(results)
-df.to_csv("output.csv", index=False)
 print("Scraping complete. Results saved to output.csv")

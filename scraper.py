@@ -34,19 +34,42 @@ search = GoogleSearch(params)
 result = search.get_dict()
 print("SERPAPI RESPONSE:", result)
 
-for g in result.get("organic_results", []):
-    title = g.get("title")
-    link = g.get("link")
-    snippet = g.get("snippet")
+import re
+from urllib.parse import urlparse
 
-    if title and link:
+for g in result.get("organic_results", []):
+    link = g.get("link")
+    snippet = g.get("snippet", "")
+
+    # Extract phone number using regex
+    phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', snippet)
+    phone_number = phone_match.group() if phone_match else ''
+
+    # Try to extract state by checking known U.S. states in snippet
+    states = ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
+              "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
+              "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi",
+              "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico",
+              "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
+              "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
+              "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"]
+
+    state = next((s for s in states if s.lower() in snippet.lower()), '')
+
+    # Extract root domain from URL
+    domain = ''
+    if link:
+        parsed_url = urlparse(link)
+        domain = parsed_url.netloc.replace('www.', '')
+
+    if domain:
         results.append({
-            'title': title,
-            'link': link,
-            'snippet': snippet if snippet else ''
+            'Website': domain,
+            'State': state,
+            'Phone Number': phone_number
         })
 
-    time.sleep(5)  # avoid hitting Google too quickly
+time.sleep(5)  # avoid hitting Google too quickly
 
 # Save results
 df = pd.DataFrame(results)

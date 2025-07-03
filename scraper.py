@@ -51,6 +51,7 @@ for state in states_to_search:
 
         search = GoogleSearch(params)
         result = search.get_dict()
+print(json.dumps(result, indent=2))
 
 import re
 from urllib.parse import urlparse

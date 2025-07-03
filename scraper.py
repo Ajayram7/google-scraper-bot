@@ -163,8 +163,8 @@ for page_url in contact_urls_to_check:
 state = next((s for s in states_to_search if s.lower() in text.lower()), '')
 
 # Only append if we have a phone number (state is optional)
-if not phone_number:
-    print(f"No phone number found for {domain}")
+parsed_url = urlparse(link)
+domain = parsed_url.netloc.replace('www.', '')
 else:
     print(f"✅ VALID ENTRY: {domain}, {phone_number}, {state}")
     sheet.append_row([

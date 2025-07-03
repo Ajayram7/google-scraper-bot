@@ -49,15 +49,36 @@ for state in states_to_search:
             "api_key": api_key
         }
 
-        search = GoogleSearch(params)
-        result = search.get_dict()
+result = {}
+search = GoogleSearch(params)
+all_results = []
+
+while True:
+    result = search.get_dict()
+    all_results.extend(result.get("organic_results", []))
+
+    # Follow the "next" link if available
+    next_page = result.get("serpapi_pagination", {}).get("next")
+    if not next_page:
+        break
+
+    # Update the query params to go to the next page
+    search = GoogleSearch({
+        "engine": "google",
+        "q": query,
+        "api_key": api_key,
+        "start": len(all_results)
+    })
+
+    time.sleep(2)  # Small delay to avoid hitting rate limits
+
 print(json.dumps(result, indent=2))
 
 import re
 from urllib.parse import urlparse
 import re
 
-for g in result.get("organic_results", []):
+for g in all_results:
     link = g.get("link")
     if not link:
         continue
@@ -65,6 +86,12 @@ for g in result.get("organic_results", []):
     # Extract root domain from URL
     parsed_url = urlparse(link)
     domain = parsed_url.netloc.replace('www.', '')
+# Skip bad domains
+bad_extensions = (".gov", ".org", ".edu")
+bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
+
+if domain.endswith(bad_extensions) or any(bad in domain for bad in bad_domains):
+    continue
 
     # Try to find Contact page
     contact_url = None
@@ -102,13 +129,16 @@ for g in result.get("organic_results", []):
               "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
               "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"]
 
-    state = next((s for s in states_to_search if s.lower() in text.lower()), '')
+state = next((s for s in states_to_search if s.lower() in text.lower()), '')
 
+# Only append if we have a phone number (state is optional)
+if phone_number:
     sheet.append_row([
         domain,
         state,
         phone_number
     ])
+    seen_domains.add(domain)
 
     time.sleep(3)  # Avoid rate-limiting
 

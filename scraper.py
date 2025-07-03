@@ -169,7 +169,7 @@ print(f"✅ VALID ENTRY: {domain}")
 sheet.append_row([domain])
 seen_domains.add(domain)
 
-    time.sleep(3)  # Avoid rate-limiting
+time.sleep(3)  # Avoid rate-limiting
 
 # Upload results to Google Sheet
 sheet = client.open("Google Scraper Data").sheet1

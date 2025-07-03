@@ -34,11 +34,11 @@ location = config.get('location', '')
 results = []
 seen_domains = set()
 
-states_to_search = ["Arizona"]
+states_to_search = [""]
 
 for state in states_to_search:
     for keyword in keywords:
-        query = f'"{vertical}" + "{keyword}" + {state}'
+        query = f'{vertical} + "{term}"'
         api_key = os.getenv("SERPAPI_API_KEY")
 
         print(f"Searching for: {query}")

@@ -79,24 +79,27 @@ from urllib.parse import urlparse
 import re
 
 for g in all_results:
+    print(f"Found result URL: {g.get('link')}")  # ← Add this line
     link = g.get("link")
     if not link:
         continue
     # Extract root domain from URL
     parsed_url = urlparse(link)
     domain = parsed_url.netloc.replace('www.', '')
+print(f"Checking domain: {domain}")
 
     # Skip bad domains with logging
     bad_extensions = (".gov", ".org", ".edu")
     bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
 
-    if domain.endswith(bad_extensions):
-        print(f"Skipping {domain} due to bad extension")
-        continue
+# if domain.endswith(bad_extensions):
+#     print(f"Skipping {domain} due to bad extension")
+#     continue
 
-    if any(bad in domain for bad in bad_domains):
-        print(f"Skipping {domain} due to bad domain match")
-        continue
+# if any(bad in domain for bad in bad_domains):
+#     print(f"Skipping {domain} due to bad domain match")
+#     continue
+
 
 from urllib.parse import urljoin, urlparse
 

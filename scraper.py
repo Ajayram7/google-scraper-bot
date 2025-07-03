@@ -86,12 +86,13 @@ for g in all_results:
     # Extract root domain from URL
     parsed_url = urlparse(link)
     domain = parsed_url.netloc.replace('www.', '')
-# Skip bad domains
-bad_extensions = (".gov", ".org", ".edu")
-bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
 
-if domain.endswith(bad_extensions) or any(bad in domain for bad in bad_domains):
-    continue
+    # Skip bad domains
+    bad_extensions = (".gov", ".org", ".edu")
+    bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
+
+    if domain.endswith(bad_extensions) or any(bad in domain for bad in bad_domains):
+        continue
 
     # Try to find Contact page
     contact_url = None

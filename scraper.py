@@ -89,8 +89,8 @@ for g in all_results:
 print(f"Checking domain: {domain}")
 
     # Skip bad domains with logging
-    bad_extensions = (".gov", ".org", ".edu")
-    bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
+bad_extensions = (".gov", ".org", ".edu")
+bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
 
 # if domain.endswith(bad_extensions):
 #     print(f"Skipping {domain} due to bad extension")

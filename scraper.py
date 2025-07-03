@@ -98,32 +98,43 @@ for g in all_results:
         print(f"Skipping {domain} due to bad domain match")
         continue
 
-    # Try to find Contact page
-    contact_url = None
-    contact_paths = ["/contact", "/contact-us", "/contactus"]
-    for path in contact_paths:
-        if path in link:
-            contact_url = link
-            break
-    if not contact_url:
-        contact_url = link.rstrip("/") + "/contact"
+from urllib.parse import urljoin, urlparse
 
-    # Fetch Contact page content
+# Start with homepage
+contact_urls_to_check = [link]
+
+try:
+    response = requests.get(link, timeout=5)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        for a_tag in soup.find_all("a", href=True):
+            href = a_tag["href"]
+            full_url = urljoin(link, href)
+
+            # Only add internal links
+            if urlparse(full_url).netloc == urlparse(link).netloc:
+                if full_url not in contact_urls_to_check:
+                    contact_urls_to_check.append(full_url)
+except requests.exceptions.RequestException:
+    pass
+
+phone_number = ''
+text = ''
+
+for page_url in contact_urls_to_check:
     try:
-        response = requests.get(contact_url, timeout=5)
-        if response.status_code != 200:
-            text = ""
-        else:
+        response = requests.get(page_url, timeout=5)
+        if response.status_code == 200:
             html = response.text
             soup = BeautifulSoup(html, "html.parser")
             text = soup.get_text(" ", strip=True)
 
+            phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text)
+            if phone_match:
+                phone_number = phone_match.group()
+                break  # Stop once we find a phone number
     except requests.exceptions.RequestException:
-        text = ""
-
-    # Extract phone number from Contact page
-    phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text)
-    phone_number = phone_match.group() if phone_match else ''
+        continue
 
     # Try to extract state from Contact page
     states = ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",

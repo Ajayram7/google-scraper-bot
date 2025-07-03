@@ -101,13 +101,13 @@ for g in result.get("organic_results", []):
 
     state = next((s for s in states_to_search if s.lower() in text.lower()), '')
 
-sheet.append_row([
-    domain,
-    state,
-    phone_number
-])
+    sheet.append_row([
+        domain,
+        state,
+        phone_number
+    ])
 
-time.sleep(3)  # Avoid rate-limiting
+    time.sleep(3)  # Avoid rate-limiting
 
 # Upload results to Google Sheet
 sheet = client.open("Google Scraper Data").sheet1

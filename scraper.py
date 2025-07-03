@@ -87,12 +87,17 @@ for g in all_results:
     parsed_url = urlparse(link)
     domain = parsed_url.netloc.replace('www.', '')
 
-    # Skip bad domains
-    bad_extensions = (".gov", ".org", ".edu")
-    bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
+# Skip bad domains with logging
+bad_extensions = (".gov", ".org", ".edu")
+bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
 
-    if domain.endswith(bad_extensions) or any(bad in domain for bad in bad_domains):
-        continue
+if domain.endswith(bad_extensions):
+    print(f"Skipping {domain} due to bad extension")
+    continue
+
+if any(bad in domain for bad in bad_domains):
+    print(f"Skipping {domain} due to bad domain match")
+    continue
 
     # Try to find Contact page
     contact_url = None
@@ -133,7 +138,10 @@ for g in all_results:
 state = next((s for s in states_to_search if s.lower() in text.lower()), '')
 
 # Only append if we have a phone number (state is optional)
-if phone_number:
+if not phone_number:
+    print(f"No phone number found for {domain}")
+else:
+    print(f"✅ VALID ENTRY: {domain}, {phone_number}, {state}")
     sheet.append_row([
         domain,
         state,

@@ -78,28 +78,40 @@ import re
 from urllib.parse import urlparse
 import re
 
+import requests
+
+freight_keywords = ["ltl", "ltl shipping", "less than truckload", "freight", "ltl freight"]
+found_websites = []
+
 for g in all_results:
-    print(f"Found result URL: {g.get('link')}")  # ← Add this line
     link = g.get("link")
     if not link:
         continue
-    # Extract root domain from URL
-    parsed_url = urlparse(link)
-    domain = parsed_url.netloc.replace('www.', '')
-print(f"Checking domain: {domain}")
 
-    # Skip bad domains with logging
-bad_extensions = (".gov", ".org", ".edu")
-bad_domains = ["linkedin.com", "facebook.com", "twitter.com", "instagram.com"]
+    print(f"Checking link: {link}")
 
-# if domain.endswith(bad_extensions):
-#     print(f"Skipping {domain} due to bad extension")
-#     continue
+try:
+    response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+    if response.status_code == 200:
+        page_text = response.text.lower()
+        if any(keyword in page_text for keyword in freight_keywords):
+            print(f"✅ Freight keyword found on: {link}")
+            found_websites.append(link)
+        else:
+            print(f"❌ No freight keywords on: {link}")
+    else:
+        print(f"⚠️ Failed to fetch {link} — status code {response.status_code}")
+except Exception as e:
+    print(f"❌ Error fetching {link}: {e}")
 
-# if any(bad in domain for bad in bad_domains):
-#     print(f"Skipping {domain} due to bad domain match")
-#     continue
+# Save found URLs to CSV
+import csv
 
+with open("output.csv", mode="w", newline="", encoding="utf-8") as file:
+    writer = csv.writer(file)
+    writer.writerow(["URL"])
+    for url in found_websites:
+        writer.writerow([url])
 
 from urllib.parse import urljoin, urlparse
 

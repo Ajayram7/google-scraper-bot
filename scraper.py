@@ -80,10 +80,12 @@ for g in result.get("organic_results", []):
     try:
         response = requests.get(contact_url, timeout=5)
         if response.status_code != 200:
-            raise Exception("Bad status")
-        html = response.text
-        soup = BeautifulSoup(html, "html.parser")
-        text = soup.get_text(" ", strip=True)
+            text = ""
+        else:
+            html = response.text
+            soup = BeautifulSoup(html, "html.parser")
+            text = soup.get_text(" ", strip=True)
+
     except requests.exceptions.RequestException:
         text = ""
 

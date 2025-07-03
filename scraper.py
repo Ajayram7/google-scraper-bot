@@ -162,17 +162,12 @@ for page_url in contact_urls_to_check:
 
 state = next((s for s in states_to_search if s.lower() in text.lower()), '')
 
-# Only append if we have a phone number (state is optional)
 parsed_url = urlparse(link)
 domain = parsed_url.netloc.replace('www.', '')
-else:
-    print(f"✅ VALID ENTRY: {domain}, {phone_number}, {state}")
-    sheet.append_row([
-        domain,
-        state,
-        phone_number
-    ])
-    seen_domains.add(domain)
+
+print(f"✅ VALID ENTRY: {domain}")
+sheet.append_row([domain])
+seen_domains.add(domain)
 
     time.sleep(3)  # Avoid rate-limiting
 

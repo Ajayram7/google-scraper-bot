@@ -12,9 +12,9 @@ import requests
 from urllib.parse import urlparse
 import csv
 
-# -------------------------------
+# --------------------------------------------------
 # LOAD CREDS
-# -------------------------------
+# --------------------------------------------------
 load_dotenv()
 
 creds_dict = json.loads(os.environ["GOOGLE_CREDS_JSON"])
@@ -27,9 +27,9 @@ client = gspread.authorize(creds)
 
 sheet = client.open("Google Scraper Data").sheet1
 
-# -------------------------------
+# --------------------------------------------------
 # LOAD CONFIG
-# -------------------------------
+# --------------------------------------------------
 with open("config.json", "r") as f:
     config = json.load(f)
 
@@ -40,9 +40,45 @@ location = config.get("location", "")
 results = []
 seen_domains = set()
 
-# -------------------------------
+# --------------------------------------------------
+# BLACKLIST (DO NOT SAVE THESE)
+# --------------------------------------------------
+BLACKLIST_DOMAINS = [
+    # Social media
+    "facebook.com", "m.facebook.com", "instagram.com", "youtube.com",
+    "twitter.com", "tiktok.com", "pinterest.com", "reddit.com",
+
+    # Marketplaces & retail
+    "amazon.com", "ebay.com", "walmart.com", "etsy.com",
+
+    # Freight brokers / logistics SaaS / carriers
+    "freightcenter.com", "freightquote.com", "freightpros.com",
+    "freightwaves.com", "freightsidekick.com", "shipnerd.com",
+    "flexport.com", "cowtownexpress.com", "redwoodlogistics.com",
+    "ziplinelogistics.com", "m9logistics.com", "emotrans",
+
+    # Carriers
+    "ups.com", "fedex.com", "usps.com", "dhl.com",
+    "odfl.com", "saia.com", "xpo.com", "estes", "abf.com",
+
+    # News / media / magazines
+    "floortrendsmag.com", "patch.com", "wikipedia.org",
+    "nmfta.org", "nwfa.org",
+
+    # Irrelevant companies
+    "harborfreight.com", "go.harborfreight.com",
+    "granddesignrv.com", "thetruckersreport.com",
+
+    # Groups / forums
+    "groups.io", "realstmfc.groups.io",
+
+    # Trade show supplies
+    "tradeshow-stuff.com",
+]
+
+# --------------------------------------------------
 # GOOGLE SEARCH
-# -------------------------------
+# --------------------------------------------------
 states_to_search = [""]
 
 for state in states_to_search:
@@ -81,9 +117,9 @@ while True:
 
 print(f"\nTotal Google results collected: {len(all_results)}\n")
 
-# -------------------------------
+# --------------------------------------------------
 # PROCESS RESULTS
-# -------------------------------
+# --------------------------------------------------
 found_websites = []
 
 if not all_results:
@@ -100,9 +136,16 @@ for g in all_results:
     print(f"\n🔗 Checking link: {link}")
 
     # Extract domain
-    domain = urlparse(link).netloc.replace("www.", "")
+    domain = urlparse(link).netloc.replace("www.", "").lower()
+
+    # Skip blacklist
+    if any(bad in domain for bad in BLACKLIST_DOMAINS):
+        print(f"🚫 BLACKLISTED: {domain}")
+        continue
+
+    # Skip duplicates
     if domain in seen_domains:
-        print(f"🔁 Already saved, skipping: {domain}")
+        print(f"🔁 Already saved: {domain}")
         continue
 
     # URL-based freight signals
@@ -114,7 +157,7 @@ for g in all_results:
         if response.status_code == 200:
             page_text = response.text.lower()
 
-            # Check for freight keywords in page text
+            # Keyword flag
             keyword_flag = any(k.lower() in page_text for k in freight_keywords)
 
             if url_flag or keyword_flag:
@@ -131,9 +174,9 @@ for g in all_results:
     except Exception as e:
         print(f"❌ Error fetching {link}: {e}")
 
-# -------------------------------
+# --------------------------------------------------
 # WRITE TO CSV
-# -------------------------------
+# --------------------------------------------------
 with open("output.csv", "w", newline="", encoding="utf-8") as file:
     writer = csv.writer(file)
     writer.writerow(["URL"])
@@ -144,4 +187,5 @@ print("\n----------------------------------------")
 print(f"🎉 SCRAPING COMPLETE — {len(found_websites)} VALID FREIGHT DOMAINS FOUND")
 print("📄 Results saved to output.csv AND Google Sheets")
 print("----------------------------------------")
+
 

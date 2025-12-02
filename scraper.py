@@ -88,6 +88,11 @@ if not all_results:
     print("No results returned from Google. Skipping the rest of the script.")
     exit()
 
+from urllib.parse import urlparse
+
+found_websites = []
+seen_domains = set()   # Track domains already added
+
 for g in all_results:
     link = g.get("link")
     if not link:
@@ -95,21 +100,34 @@ for g in all_results:
 
     print(f"Checking link: {link}")
 
-try:
-    response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
 
-    if response.status_code == 200:
-        page_text = response.text.lower()
+        if response.status_code == 200:
+            page_text = response.text.lower()
 
-        if any(fk in page_text for fk in freight_keywords):
-            print(f"✅ Freight keyword found on: {link}")
-            found_websites.append(link)
+            # Extract domain name only
+            domain = urlparse(link).netloc.replace("www.", "")
+
+            # Skip duplicates
+            if domain in seen_domains:
+                print(f"⏩ Already saved domain, skipping: {domain}")
+                continue
+
+            # Check for freight keywords
+            if any(keyword.lower() in page_text for keyword in freight_keywords):
+                print(f"✅ Freight keyword found on: {link}")
+
+                found_websites.append(domain)  # Save the domain only
+                seen_domains.add(domain)       # Mark domain as saved
+            else:
+                print(f"❌ No freight keywords on: {link}")
+
         else:
-            print(f"❌ No freight keywords on: {link}")
+            print(f"⚠️ Failed to fetch {link} – status code {response.status_code}")
 
-
-except Exception as e:
-    print(f"❌ Error fetching {link}: {e}")
+    except Exception as e:
+        print(f"❌ Error fetching {link}: {e}")
 
 
 

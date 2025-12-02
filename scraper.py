@@ -9,9 +9,14 @@ from serpapi import GoogleSearch
 from dotenv import load_dotenv
 import os
 import requests
+from urllib.parse import urlparse
+import csv
 
+# -------------------------------
+# LOAD CREDS
+# -------------------------------
 load_dotenv()
-# Load Google credentials from environment variable
+
 creds_dict = json.loads(os.environ["GOOGLE_CREDS_JSON"])
 scopes = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -20,28 +25,32 @@ scopes = [
 creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 client = gspread.authorize(creds)
 
-# Open the Google Sheet
 sheet = client.open("Google Scraper Data").sheet1
 
-# Load search config
-with open('config.json', 'r') as f:
+# -------------------------------
+# LOAD CONFIG
+# -------------------------------
+with open("config.json", "r") as f:
     config = json.load(f)
 
-vertical = config['vertical']
-keywords = config['freight_keywords']
-location = config.get('location', '')
+vertical = config["vertical"]
+freight_keywords = config["freight_keywords"]
+location = config.get("location", "")
 
 results = []
 seen_domains = set()
 
+# -------------------------------
+# GOOGLE SEARCH
+# -------------------------------
 states_to_search = [""]
 
 for state in states_to_search:
-    for keyword in keywords:
-        query = f'{vertical} + "{keyword}"'
+    for keyword in freight_keywords:
+        query = f'{vertical} "{keyword}"'
         api_key = os.getenv("SERPAPI_API_KEY")
 
-        print(f"Searching for: {query}")
+        print(f"\n🔍 Searching Google for: {query}")
 
         params = {
             "engine": "google",
@@ -57,12 +66,10 @@ while True:
     result = search.get_dict()
     all_results.extend(result.get("organic_results", []))
 
-    # Follow the "next" link if available
     next_page = result.get("serpapi_pagination", {}).get("next")
     if not next_page:
         break
 
-    # Update the query params to go to the next page
     search = GoogleSearch({
         "engine": "google",
         "q": query,
@@ -70,136 +77,71 @@ while True:
         "start": len(all_results)
     })
 
-    time.sleep(2)  # Small delay to avoid hitting rate limits
+    time.sleep(2)
 
-print(json.dumps(result, indent=2))
+print(f"\nTotal Google results collected: {len(all_results)}\n")
 
-import re
-from urllib.parse import urlparse
-import re
-
-import requests
-
-freight_keywords = ["ltl", "ltl shipping", "less than truckload", "freight", "ltl freight"]
+# -------------------------------
+# PROCESS RESULTS
+# -------------------------------
 found_websites = []
 
-# If there are no search results, stop the script cleanly
 if not all_results:
-    print("No results returned from Google. Skipping the rest of the script.")
+    print("❌ No Google search results returned.")
     exit()
 
-from urllib.parse import urlparse
-
-found_websites = []
-seen_domains = set()   # Track domains already added
+shipping_indicators = ["shipping", "delivery", "freight", "shipping-info", "returns", "policies"]
 
 for g in all_results:
     link = g.get("link")
     if not link:
         continue
 
-    print(f"Checking link: {link}")
+    print(f"\n🔗 Checking link: {link}")
 
-# Extract domain name only
-domain = urlparse(link).netloc.replace("www.", "")
+    # Extract domain
+    domain = urlparse(link).netloc.replace("www.", "")
+    if domain in seen_domains:
+        print(f"🔁 Already saved, skipping: {domain}")
+        continue
 
-# Skip duplicates
-if domain in seen_domains:
-    print(f"🔁 Already saved domain, skipping: {domain}")
-    continue
+    # URL-based freight signals
+    url_flag = any(ind in link.lower() for ind in shipping_indicators)
 
-# Always check URL for intent first
-shipping_indicators = ["shipping", "delivery", "freight", "shipping-info", "returns", "policies"]
-url_flag = any(ind in link.lower() for ind in shipping_indicators)
+    # Fetch page
+    try:
+        response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        if response.status_code == 200:
+            page_text = response.text.lower()
 
-# Now try fetching the page
-try:
-    response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+            # Check for freight keywords in page text
+            keyword_flag = any(k.lower() in page_text for k in freight_keywords)
 
-    if response.status_code == 200:
-        page_text = response.text.lower()
+            if url_flag or keyword_flag:
+                print(f"✅ MATCH FOUND: {domain} (Reason: {'URL' if url_flag else 'Keyword'})")
+                found_websites.append(domain)
+                seen_domains.add(domain)
+                sheet.append_row([domain])  # Save to Google Sheet
+            else:
+                print(f"❌ No freight match for: {link}")
 
-        # Check freight keywords inside page text
-        keyword_flag = any(keyword.lower() in page_text for keyword in freight_keywords)
-
-        # Save if either URL indicates shipping OR keywords found on page
-        if url_flag or keyword_flag:
-            print(f"✅ MATCH FOUND: {domain} ({'URL match' if url_flag else 'Keyword match'})")
-            found_websites.append(domain)
-            seen_domains.add(domain)
         else:
-            print(f"❌ No freight signals found on: {link}")
+            print(f"⚠️ Failed to fetch {link} (status {response.status_code})")
 
+    except Exception as e:
+        print(f"❌ Error fetching {link}: {e}")
 
-# Save found URLs to CSV
-import csv
-
-with open("output.csv", mode="w", newline="", encoding="utf-8") as file:
+# -------------------------------
+# WRITE TO CSV
+# -------------------------------
+with open("output.csv", "w", newline="", encoding="utf-8") as file:
     writer = csv.writer(file)
     writer.writerow(["URL"])
     for url in found_websites:
         writer.writerow([url])
 
-from urllib.parse import urljoin, urlparse
+print("\n----------------------------------------")
+print(f"🎉 SCRAPING COMPLETE — {len(found_websites)} VALID FREIGHT DOMAINS FOUND")
+print("📄 Results saved to output.csv AND Google Sheets")
+print("----------------------------------------")
 
-# Start with homepage
-contact_urls_to_check = [link]
-
-try:
-    response = requests.get(link, timeout=5)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "html.parser")
-        for a_tag in soup.find_all("a", href=True):
-            href = a_tag["href"]
-            full_url = urljoin(link, href)
-
-            # Only add internal links
-            if urlparse(full_url).netloc == urlparse(link).netloc:
-                if full_url not in contact_urls_to_check:
-                    contact_urls_to_check.append(full_url)
-except requests.exceptions.RequestException:
-    pass
-
-phone_number = ''
-text = ''
-
-for page_url in contact_urls_to_check:
-    try:
-        response = requests.get(page_url, timeout=5)
-        if response.status_code == 200:
-            html = response.text
-            soup = BeautifulSoup(html, "html.parser")
-            text = soup.get_text(" ", strip=True)
-
-            phone_match = re.search(r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}', text)
-            if phone_match:
-                phone_number = phone_match.group()
-                break  # Stop once we find a phone number
-    except requests.exceptions.RequestException:
-        continue
-
-    # Try to extract state from Contact page
-    states = ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
-              "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky",
-              "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi",
-              "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey", "New Mexico",
-              "New York", "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", "Pennsylvania",
-              "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont",
-              "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming"]
-
-state = next((s for s in states_to_search if s.lower() in text.lower()), '')
-
-parsed_url = urlparse(link)
-domain = parsed_url.netloc.replace('www.', '')
-
-print(f"✅ VALID ENTRY: {domain}")
-sheet.append_row([domain])
-seen_domains.add(domain)
-
-time.sleep(3)  # Avoid rate-limiting
-
-# Upload results to Google Sheet
-sheet = client.open("Google Scraper Data").sheet1
-print(f"Total domains found: {len(seen_domains)}")
-
-print("Scraping complete. Results saved to output.csv")

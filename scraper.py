@@ -12,9 +12,9 @@ import requests
 from urllib.parse import urlparse
 import csv
 
-# --------------------------------------------------
+# -------------------------------
 # LOAD CREDS
-# --------------------------------------------------
+# -------------------------------
 load_dotenv()
 
 creds_dict = json.loads(os.environ["GOOGLE_CREDS_JSON"])
@@ -27,9 +27,9 @@ client = gspread.authorize(creds)
 
 sheet = client.open("Google Scraper Data").sheet1
 
-# --------------------------------------------------
+# -------------------------------
 # LOAD CONFIG
-# --------------------------------------------------
+# -------------------------------
 with open("config.json", "r") as f:
     config = json.load(f)
 
@@ -40,45 +40,70 @@ location = config.get("location", "")
 results = []
 seen_domains = set()
 
-# --------------------------------------------------
-# BLACKLIST (DO NOT SAVE THESE)
-# --------------------------------------------------
-BLACKLIST_DOMAINS = [
-    # Social media
-    "facebook.com", "m.facebook.com", "instagram.com", "youtube.com",
-    "twitter.com", "tiktok.com", "pinterest.com", "reddit.com",
+# -------------------------------
+# BLACKLIST SYSTEM
+# -------------------------------
 
-    # Marketplaces & retail
-    "amazon.com", "ebay.com", "walmart.com", "etsy.com",
+# 1️⃣ Exact domain blacklist
+blacklisted_domains = {
+    # SOCIAL / NEWS / BLOGS
+    "facebook.com", "m.facebook.com", "youtube.com", "vimeo.com", "reddit.com", 
+    "linkedin.com", "steamcommunity.com", "turbobricks.com",
+    "apnews.com", "nzherald.co.nz", "financialpost.com", "law360.com",
+    "airqualitynews.com", "theguardian.com", "marketbeat.com", "stuff.co.nz",
+    "hola.com", "krcgtv.com", "stomp.sg", "currently.att.yahoo.com",
+    "finance.yahoo.com", "industrialscenery.blogspot.com", "theloadstar.com",
+    "supplychaindive.com", "finehomebuilding.com", "floorcoveringweekly.com",
+    "fcnews.net", "housedigest.com", "vocal.media", "mennogazendam.substack.com",
 
-    # Freight brokers / logistics SaaS / carriers
-    "freightcenter.com", "freightquote.com", "freightpros.com",
-    "freightwaves.com", "freightsidekick.com", "shipnerd.com",
-    "flexport.com", "cowtownexpress.com", "redwoodlogistics.com",
-    "ziplinelogistics.com", "m9logistics.com", "emotrans",
+    # MARKETPLACES / RETAIL
+    "temu.com", "wayfair.com", "sell.wayfair.com", "chegg.com",
+    "targetfmi.com", "planetexpress.com",
 
-    # Carriers
-    "ups.com", "fedex.com", "usps.com", "dhl.com",
-    "odfl.com", "saia.com", "xpo.com", "estes", "abf.com",
+    # GOVERNMENT
+    "customs.gov.sg", "wisconsindot.gov", "ncdot.gov", "gov.uk",
+    "app.leg.wa.gov", "governor.virginia.gov", "dir.ca.gov", "ops.fhwa.dot.gov",
+    "safer.fmcsa.dot.gov", "law.cornell.edu", "open.alberta.ca",
+    "portlibertynewyork.com", "portoflosangeles.org", "portseattle.org",
 
-    # News / media / magazines
-    "floortrendsmag.com", "patch.com", "wikipedia.org",
-    "nmfta.org", "nwfa.org",
+    # COMPETITOR LOGISTICS / COURIERS
+    "tnt.com", "paisleyfreight.com", "tforcefreight.com",
+    "eurosender.com", "regencyfreight.co.uk", "reliancecourierservices.com",
+    "eastgatefreight.com", "kapoklogcn.com", "globalgatesshipping.com",
+    "global-gate.us", "atlantic-gate.com", "oceangatesdelivery.com",
+    "bamfreight.com", "directdrivelogistics.com", "loadshift.com.au",
+    "roserocket.com", "maplegatefreight.com", "freight-gate.com",
+    "freightgate.net", "freightrun.com", "flow.space", "forwardair.com",
+    "partner3pl.com", "tps-global.com", "sdilogistics-shippings.com",
+    "interwf.com", "freightsmith.net", "m.jctrans.com", "azfreight.com",
+    "shipfli.com", "shipsgates.com", "airfreight.news",
 
-    # Irrelevant companies
-    "harborfreight.com", "go.harborfreight.com",
-    "granddesignrv.com", "thetruckersreport.com",
+    # RAIL / CARRIERS (won't use brokers)
+    "jbhunt.com", "bnsf.com", "up.com", "norfolksouthern.com", "wabteccorp.com",
+}
 
-    # Groups / forums
-    "groups.io", "realstmfc.groups.io",
-
-    # Trade show supplies
-    "tradeshow-stuff.com",
+# 2️⃣ Substring blacklist
+blacklisted_substrings = [
+    "youtube", "facebook", "reddit", "gov", "news", "blog", "wiki",
+    "courier", "shipping company", "carrier", "tracking",
+    "railroad", "railway", "ups.com", "fedex.com", "dhl.com"
 ]
 
-# --------------------------------------------------
+# Function to check blacklist
+def is_blacklisted(domain):
+    domain = domain.lower()
+
+    # Exact matches
+    if domain in blacklisted_domains:
+        return True
+
+    # Substring matches
+    return any(bad in domain for bad in blacklisted_substrings)
+
+
+# -------------------------------
 # GOOGLE SEARCH
-# --------------------------------------------------
+# -------------------------------
 states_to_search = [""]
 
 for state in states_to_search:
@@ -117,9 +142,9 @@ while True:
 
 print(f"\nTotal Google results collected: {len(all_results)}\n")
 
-# --------------------------------------------------
+# -------------------------------
 # PROCESS RESULTS
-# --------------------------------------------------
+# -------------------------------
 found_websites = []
 
 if not all_results:
@@ -136,16 +161,16 @@ for g in all_results:
     print(f"\n🔗 Checking link: {link}")
 
     # Extract domain
-    domain = urlparse(link).netloc.replace("www.", "").lower()
-
-    # Skip blacklist
-    if any(bad in domain for bad in BLACKLIST_DOMAINS):
-        print(f"🚫 BLACKLISTED: {domain}")
-        continue
+    domain = urlparse(link).netloc.replace("www.", "")
 
     # Skip duplicates
     if domain in seen_domains:
-        print(f"🔁 Already saved: {domain}")
+        print(f"🔁 Already saved, skipping: {domain}")
+        continue
+
+    # Apply blacklist check
+    if is_blacklisted(domain):
+        print(f"⛔ BLACKLISTED, skipping: {domain}")
         continue
 
     # URL-based freight signals
@@ -157,35 +182,20 @@ for g in all_results:
         if response.status_code == 200:
             page_text = response.text.lower()
 
-            # Keyword flag
+            # Check for freight keywords inside the site
             keyword_flag = any(k.lower() in page_text for k in freight_keywords)
 
             if url_flag or keyword_flag:
                 print(f"✅ MATCH FOUND: {domain} (Reason: {'URL' if url_flag else 'Keyword'})")
+
                 found_websites.append(domain)
                 seen_domains.add(domain)
-                sheet.append_row([domain])  # Save to Google Sheet
+                sheet.append_row([domain])
             else:
                 print(f"❌ No freight match for: {link}")
 
         else:
-            print(f"⚠️ Failed to fetch {link} (status {response.status_code})")
+            print(f"⚠️ Failed
 
-    except Exception as e:
-        print(f"❌ Error fetching {link}: {e}")
-
-# --------------------------------------------------
-# WRITE TO CSV
-# --------------------------------------------------
-with open("output.csv", "w", newline="", encoding="utf-8") as file:
-    writer = csv.writer(file)
-    writer.writerow(["URL"])
-    for url in found_websites:
-        writer.writerow([url])
-
-print("\n----------------------------------------")
-print(f"🎉 SCRAPING COMPLETE — {len(found_websites)} VALID FREIGHT DOMAINS FOUND")
-print("📄 Results saved to output.csv AND Google Sheets")
-print("----------------------------------------")
 
 

@@ -95,22 +95,23 @@ for g in all_results:
 
     print(f"Checking link: {link}")
 
-    try:
-        response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+try:
+    response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
 
-        if response.status_code == 200:
-            page_text = response.text.lower()
+    if response.status_code == 200:
+        page_text = response.text.lower()
 
-            if any(keyword in page_text for keyword in freight_keywords):
-                print(f"✅ Freight keyword found on: {link}")
-                found_websites.append(link)
-            else:
-                print(f"❌ No freight keywords on: {link}")
+        if any(fk in page_text for fk in freight_keywords):
+            print(f"✅ Freight keyword found on: {link}")
+            found_websites.append(link)
+        else:
+            print(f"❌ No freight keywords on: {link}")
 
- 
 
-    except Exception as e:
-        print(f"❌ Error fetching {link}: {e}")
+except Exception as e:
+    print(f"❌ Error fetching {link}: {e}")
+
+
 
 # Save found URLs to CSV
 import csv

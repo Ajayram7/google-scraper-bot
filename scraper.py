@@ -100,28 +100,42 @@ for g in all_results:
 
     print(f"Checking link: {link}")
 
-    try:
-        response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+# Extract domain name only
+domain = urlparse(link).netloc.replace("www.", "")
 
-        if response.status_code == 200:
-            page_text = response.text.lower()
+# Skip duplicates
+if domain in seen_domains:
+    print(f"🔁 Already saved domain, skipping: {domain}")
+    continue
 
-            # Extract domain name only
-            domain = urlparse(link).netloc.replace("www.", "")
+# Always check URL for intent first
+shipping_indicators = ["shipping", "delivery", "freight", "shipping-info", "returns", "policies"]
+url_flag = any(ind in link.lower() for ind in shipping_indicators)
 
-            # Skip duplicates
-            if domain in seen_domains:
-                print(f"⏩ Already saved domain, skipping: {domain}")
-                continue
+# Now try fetching the page
+try:
+    response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
 
-            # Check for freight keywords
-            if any(keyword.lower() in page_text for keyword in freight_keywords):
-                print(f"✅ Freight keyword found on: {link}")
+    if response.status_code == 200:
+        page_text = response.text.lower()
 
-                found_websites.append(domain)  # Save the domain only
-                seen_domains.add(domain)       # Mark domain as saved
-            else:
-                print(f"❌ No freight keywords on: {link}")
+        # Check freight keywords inside page text
+        keyword_flag = any(keyword.lower() in page_text for keyword in freight_keywords)
+
+        # Save if either URL indicates shipping OR keywords found on page
+        if url_flag or keyword_flag:
+            print(f"✅ MATCH FOUND: {domain} ({'URL match' if url_flag else 'Keyword match'})")
+            found_websites.append(domain)
+            seen_domains.add(domain)
+        else:
+            print(f"❌ No freight signals found on: {link}")
+
+    else:
+        print(f"⚠️ Failed to fetch {link} – status code {response.status_code}")
+
+except Exception as e:
+    print(f"❌ Error fetching {link}: {e}")
+
 
         else:
             print(f"⚠️ Failed to fetch {link} – status code {response.status_code}")

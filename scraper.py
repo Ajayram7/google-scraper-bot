@@ -107,8 +107,7 @@ for g in all_results:
             else:
                 print(f"❌ No freight keywords on: {link}")
 
-    else:
-        print(f"⚠️ Failed to fetch {link} — status code {response.status_code}")
+ 
 
     except Exception as e:
         print(f"❌ Error fetching {link}: {e}")

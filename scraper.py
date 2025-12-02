@@ -83,6 +83,11 @@ import requests
 freight_keywords = ["ltl", "ltl shipping", "less than truckload", "freight", "ltl freight"]
 found_websites = []
 
+# If there are no search results, stop the script cleanly
+if not all_results:
+    print("No results returned from Google. Skipping the rest of the script.")
+    exit()
+
 for g in all_results:
     link = g.get("link")
     if not link:
@@ -90,19 +95,23 @@ for g in all_results:
 
     print(f"Checking link: {link}")
 
-try:
-    response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-    if response.status_code == 200:
-        page_text = response.text.lower()
-        if any(keyword in page_text for keyword in freight_keywords):
-            print(f"✅ Freight keyword found on: {link}")
-            found_websites.append(link)
-        else:
-            print(f"❌ No freight keywords on: {link}")
+    try:
+        response = requests.get(link, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+
+        if response.status_code == 200:
+            page_text = response.text.lower()
+
+            if any(keyword in page_text for keyword in freight_keywords):
+                print(f"✅ Freight keyword found on: {link}")
+                found_websites.append(link)
+            else:
+                print(f"❌ No freight keywords on: {link}")
+
     else:
         print(f"⚠️ Failed to fetch {link} — status code {response.status_code}")
-except Exception as e:
-    print(f"❌ Error fetching {link}: {e}")
+
+    except Exception as e:
+        print(f"❌ Error fetching {link}: {e}")
 
 # Save found URLs to CSV
 import csv
